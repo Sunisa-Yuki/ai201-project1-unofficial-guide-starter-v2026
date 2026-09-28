@@ -87,23 +87,30 @@ Best time to do laundry here is Tuesday or Wednesday morning. Sunday after 6pm y
 **Answer:**
 
 ```
-PASTE OUTPUT OF: python app.py ask "How long is the wait at Kestrel Commons during the lunch rush?"
+$ python app.py ask "How long is the wait at Kestrel Commons during the lunch rush?"
+  (best distance 0.198, cutoff 0.6)
+
+The wait time at Kestrel Commons is 20 to 25 minutes between 12:15 and 1:00. (Source: `dining_kestrel_commons.txt` and `dining_kestrel_commons_followup.txt`)
+
+Sources retrieved: dining_halden_hall_followup.txt, dining_kestrel_commons.txt, dining_kestrel_commons_followup.txt, dining_the_ridgeway_cafe_followup.txt
 ```
 
-**My relevance cutoff:** 0.6 <!-- UPDATE after running retrieve -->
+**My relevance cutoff:** 0.7 (`THRESHOLD` in `config.py`, raised from the starter's 0.6)
+
+I ran my five test questions and the five `OUT_OF_SCOPE` questions through `python app.py retrieve` and recorded the best distance for each. In-corpus questions landed at 0.198–0.593; out-of-scope questions at 0.825–0.923, so there is a clean gap between 0.593 and 0.825. Four in-corpus questions sit near 0.2, but the shuttle question is an outlier at 0.593. My chunker split `transit_shuttle.txt` into two chunks, and the question's wording ("running behind") doesn't match the post's ("when the driver is behind"). At the starter's 0.6 it would only just pass, so I moved the cutoff to 0.7, roughly the middle of the gap. That leaves room for paraphrased in-corpus questions while still being well below the closest off-topic one (0.825). What 0.7 would get wrong: an off-topic question that shares campus vocabulary (e.g. "what's the best pizza in town?") could slip under it.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-| How long is the wait at Kestrel Commons during the lunch rush? | Yes |  |
-| Do leftover dining dollars roll over from spring to the next autumn? | Yes |  |
-| How many days do I have to start a grade appeal, and who do I go to first? | Yes |  |
-| What does laundry cost in Innisfree Hall and when is the best time to do it? | Yes |  |
-| Which shuttle stop gets skipped when the driver is running behind? | Yes |  |
-| What is the capital of Mongolia? | No |  |
-| How do I change the oil in a diesel engine? | No |  |
-| Who won the 1994 World Cup? | No |  |
-| What is the recommended dosage of ibuprofen for a headache? | No |  |
-| How do I write a for loop in Rust? | No |  |
+| How long is the wait at Kestrel Commons during the lunch rush? | Yes | 0.198 |
+| Do leftover dining dollars roll over from spring to the next autumn? | Yes | 0.207 |
+| How many days do I have to start a grade appeal, and who do I go to first? | Yes | 0.201 |
+| What does laundry cost in Innisfree Hall and when is the best time to do it? | Yes | 0.206 |
+| Which shuttle stop gets skipped when the driver is running behind? | Yes | 0.593 |
+| What is the capital of Mongolia? | No | 0.825 |
+| How do I change the oil in a diesel engine? | No | 0.923 |
+| Who won the 1994 World Cup? | No | 0.886 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.844 |
+| How do I write a for loop in Rust? | No | 0.864 |
 
 ## How I Used AI
 
