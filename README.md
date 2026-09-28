@@ -118,6 +118,8 @@ I ran my five test questions and the five `OUT_OF_SCOPE` questions through `pyth
 
 **2.** During setup my `pip install -r requirements.txt` failed with "No such file or directory". I pasted the terminal output to Claude, and it pointed out that I had skipped the `git clone` / `cd` step and was running from my Desktop instead of the repo. I re-ran the clone, moved into the repo folder, and made a fresh `.venv` there. I also checked every `expects` phrase Claude suggested for `questions.py` against the actual source file (e.g. "20 to 25 minutes" in `dining_kestrel_commons.txt`) before committing them.
 
+**3. (Unit 2)** I pasted my before-run results into Claude and asked it to score each criterion and find the weakest result. It pointed at the shuttle question (0.593) and suggested hybrid search. It wrote `hybrid_search` so it keeps the real cosine distance on every chunk, which means my gate still works the same. When the after run didn't improve anything, I didn't claim it helped. Checking why led to the word "behind" matching the BIOL 160 posts, and that went into the README as the result.
+
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
@@ -133,111 +135,114 @@ I ran my five test questions and the five `OUT_OF_SCOPE` questions through `pyth
 
 ## Run Log — Before
 
-<!-- Your five criteria, three runs each. `python run_eval.py --label before`
-     runs the questions, puts the OUT_OF_SCOPE ones through the gate, and
-     writes it all into results/ for you. Targets come from criteria.md; the
-     verdict column is your call.
-
-     Criterion 3 is measured in one deterministic pass rather than three, so
-     the same number goes in all three run columns. That's correct, not lazy.
-
-     Milestone 1. -->
+Evidence: `results/run_2026-09-27_2332_before.md`, produced by `run_eval.py::main` (3 runs per question, cache off, top-k 5, cutoff 0.7, chunks from `chunker.py::split_documents`, retrieval `store.py::search`, semantic only). No `scorer.py`, so I scored every cell by reading the answer text.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunks contain the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Chunks are complete, labelled thoughts (≥4 of 5 samples start with title + end on a full sentence; none < 80 chars) | 4 of 5, min ≥ 80 | 5/5, min 116 | 5/5, min 116 | 5/5, min 116 | MET |
+| 5. Answer contains the `expects` phrase | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+Criteria 3 and 4 are deterministic (the gate is a fixed comparison; the chunker doesn't change between runs), so the same number goes in all three columns.
+
+**Real output, one per criterion (run 1 unless noted):**
+
+Criterion 1: shuttle question, the hardest one. The answer chunk was retrieved (`transit_shuttle.txt`), best distance 0.5925:
+```
+Sources retrieved: dining_halden_hall_followup.txt, dining_kestrel_commons_followup.txt, dining_north_kitchen_followup.txt, transit_shuttle.txt
+```
+
+Criterion 2: every answer names its file, e.g.:
+```
+You have fifteen days to start a grade appeal, and you must go to the instructor first (*admin_grade_appeals.txt*).
+```
+
+Criterion 3: `run_eval.py::check_out_of_scope`, cutoff 0.7, refused 5 of 5:
+```
+refused  (best distance 0.825)  What is the capital of Mongolia?
+refused  (best distance 0.923)  How do I change the oil in a diesel engine?
+refused  (best distance 0.886)  Who won the 1994 World Cup?
+refused  (best distance 0.844)  What is the recommended dosage of ibuprofen for a headache?
+refused  (best distance 0.864)  How do I write a for loop in Rust?
+```
+
+Criterion 4: `python app.py index` summary, `chunker.py::split_documents`; all 5 samples under Sample Chunks above start with their title line:
+```
+chunked  107 chunks, 265 characters on average (shortest 116, longest 397), produced by chunker.py::split_documents
+```
+
+Criterion 5: expects phrase "20 to 25 minutes":
+```
+The wait at Kestrel Commons is 20 to 25 minutes between 12:15 and 1:00 (which is the lunch rush timeframe mentioned).
+Source: `dining_kestrel_commons.txt` (and also mentioned in `dining_kestrel_commons_followup.txt`).
+```
 
 ## Verdicts
 
-<!-- MET or MISSED for each of the five, against the target you wrote last
-     unit — not a new one. Plus a sentence on how you decided. That sentence
-     matters most where it was close.
-
-     If your target said 4 of 5 and your runs came out 4, 3, 4, that's a MISS.
-     The target has to hold, not show up occasionally.
-
-     Milestone 2. -->
-
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunks contain the answer | MET | In all 15 question-runs, the file holding the answer was in the retrieved set, and the answer text matched it. |
+| 2 | Every answer names a source | MET | All 15 answers name a `.txt` file, and in every case it's the file the fact actually comes from, not just any retrieved file. |
+| 3 | Gate stops out-of-corpus questions | MET | 5 of 5 refused. The closest off-topic question (0.825) was 0.125 above the cutoff. |
+| 4 | Chunks are complete, labelled thoughts | MET | 5/5 samples start with the post title and end on a full sentence; the shortest chunk in the index is 116 characters, above the 80 floor. |
+| 5 | Answer contains the `expects` phrase | MET | 15/15. Closest call: "fifteen days" could have come out as "15 days" and failed a string match, but it didn't in any run. |
 
 ## Diagnoses
 
-<!-- For each miss: which stage caused it, and how. The stage alone isn't
-     enough — you need the mechanism.
+**I missed nothing, and that mostly means my targets were set low.** Four of five criteria allowed one miss, and my five questions each have one obvious source document written in the same words as the answer. None of them needs two documents combined or tests paraphrase. The system cleared 5/5 everywhere, so the criteria didn't separate a good system from an OK one.
 
-     Not a diagnosis: "Question 3 didn't work."
-     A diagnosis:     "Question 3 asks about laundry costs. The answer is in
-                       one sentence that got split across two chunks, so
-                       neither chunk on its own contains it."
+The one weak spot the runs *did* show is in **retrieval**, on the shuttle question:
+- **Stage: retrieval (embedding match).** Best distance 0.593, versus about 0.20 for the other four questions. The question says "running behind"; the post says "when the driver is behind". My chunker split `transit_shuttle.txt` in two, and the chunk with the answer opens with "It's free with a student ID", which dilutes the embedding.
+- **Mechanism:** the other 3 of the 4 retrieved files were dining follow-up posts, pulled in because they talk about *waiting* and *timing*, the same general idea as "running behind". Semantic search matched on topic ("delays") instead of on the exact words the question shares with the post ("shuttle", "stop", "driver").
+- At the starter's 0.6 cutoff this question would have passed by only 0.007. It's the answer that is one wording change away from being refused.
 
-     The five stages: loading → chunking → embedding → retrieval → generation.
-
-     Look for a pattern. If three misses all ask about numbers, that's one
-     problem, not three.
-
-     Missed nothing? Say so, then say honestly whether your targets were set
-     low, and which one you'd tighten and to what.
-
-     Milestone 3. -->
+**Criteria I'd tighten:** criterion 1 to "the answer chunk is ranked #1 in at least 4 of 5", and criterion 3 to "every out-of-scope question is refused *and* its best distance is at least 0.1 above the cutoff".
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** hybrid search. `store.py::hybrid_search` runs BM25 keyword search (`rank-bm25`) alongside semantic search and merges the two rankings with reciprocal rank fusion (k=60). Every chunk keeps its real cosine distance, so the relevance gate (`gate.py::check`, which takes the minimum distance) works exactly as before. It's switched by `HYBRID` in `config.py` (or `AI201_HYBRID=0`), so the before system can still be run. Nothing else changed: same chunker, same top-k, same cutoff, same prompt.
 
-**Why I picked it:**
-
-<!-- Connect it to a specific diagnosis above in one sentence. If you can't,
-     you picked a fix because it sounded impressive. -->
+**Why I picked it:** the shuttle question shares exact words with its answer post ("shuttle", "stop", "driver"), but semantic search ranked three dining posts about *waiting* next to it, and keyword matching is what should catch that.
 
 ### Run Log — After
 
-<!-- Same format, same five criteria, three runs each.
-     `python run_eval.py --label after` -->
+Evidence: `results/run_2026-09-27_2337_after.md` (same settings, `HYBRID = True`).
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunks contain the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Chunks are complete, labelled thoughts (≥4 of 5 samples start with title + end on a full sentence; none < 80 chars) | 4 of 5, min ≥ 80 | 5/5, min 116 | 5/5, min 116 | 5/5, min 116 | MET |
+| 5. Answer contains the `expects` phrase | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 
-**Did it help?**
+Retrieved files for the shuttle question, before and after (identical across all 3 runs of each):
+```
+BEFORE (semantic): dining_halden_hall_followup.txt, dining_kestrel_commons_followup.txt, dining_north_kitchen_followup.txt, transit_shuttle.txt
+AFTER  (hybrid):   course_biol_160.txt, course_biol_160_exams.txt, dining_halden_hall_followup.txt, transit_shuttle.txt
+```
 
-<!-- Say plainly whether it did, and how you know. If it made things worse,
-     say that — a change that backfired, honestly reported, earns full credit
-     and is more interesting than one that worked. What matters is that you can
-     tell.
+Answer file present in the retrieved set, counted by file, for all five questions:
 
-     Milestone 4. -->
+| Question | Before: right file / files retrieved | After |
+|---|---|---|
+| Kestrel wait | 2/4 | 2/4 |
+| Dining dollars | 1/5 | 1/5 |
+| Grade appeal | 1/5 | 1/5 |
+| Innisfree laundry | 2/5 | 2/5 |
+| Shuttle | 1/4 | 1/4 |
+
+**Did it help?** No. All five criteria are the same (still 5/5 on every run), and the thing I was trying to fix didn't improve: the shuttle question still retrieves exactly one relevant file. Hybrid only swapped *which* noise came back. BM25 matched the word "behind" in `course_biol_160.txt` ("falling behind once is very hard to recover from"), so two biology posts replaced two dining posts. The grade-appeal question also picked up `health_center.txt` and `admin_meal_plan_changes.txt`, which weren't there before. The answers were unaffected because the model ignored the noise, but retrieval is not cleaner. I can tell because the retrieved-source lists in the two results files differ while the relevant-file counts are identical.
 
 ## What's Still Broken
 
-<!-- For each criterion still missed after your fix: what you'd do about it,
-     and why you stopped where you did.
+No criterion is missed, but these problems are still there:
 
-     "I ran out of time" is fine if it's true. Pretending nothing is left is
-     not.
-
-     Milestone 5. -->
+- **Noisy top-k.** 1–2 of every 4–5 retrieved files are relevant; the rest is filler that happens to share a word or a topic. I'd try either a stricter per-chunk cutoff (drop any chunk more than ~0.2 worse than the best one) or BM25 with a stopword list tuned to this corpus, so generic words like "behind" and "first" don't count as matches. I stopped here because the brief allows one change per unit, and the criteria as written can't show the difference.
+- **The shuttle question's 0.593 distance.** Hybrid doesn't change distances, so it is still the answer most at risk of being refused. The next thing I'd test is keeping short posts whole (one post = one chunk) for posts under ~400 characters, so the "free with a student ID" sentence doesn't dominate the answer chunk.
 
 ## What I'd Do Differently
 
-<!-- Knowing what you know now — which of your five criteria would you write
-     differently, and why?
-
-     Milestone 5. -->
+I'd write criteria that could actually fail. Criterion 1 would require the answer chunk to be **ranked first**, not just somewhere in the top 5. I'd add a precision criterion, like "at least half of retrieved chunks come from a relevant document", which would have caught the noise problem both before and after. And at least one of my five questions would need a paraphrase or two documents to answer, because all five of mine were written in the corpus's own words, so they were easy.
