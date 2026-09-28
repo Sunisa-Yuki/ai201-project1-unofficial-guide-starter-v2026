@@ -23,8 +23,7 @@ For at least 4 of my 5 test questions, the retrieved chunks include one that
 contains the answer.
 
 **Why this target:**
-<!-- e.g. "One of my questions is about a topic only two documents mention, so
-     I expect that one to be hard." -->
+4 of 5 rather than 5 of 5 because my Kestrel Commons question uses the words "lunch rush" while the post says "between 12:15 and 1:00", and there are 14 other dining posts using the same "wait times" template, so I expect at least one question where the right chunk is outranked by a near-duplicate from another building. Lower than 4 would mean retrieval is failing on questions that each have one clear source document.
 
 ---
 
@@ -33,8 +32,7 @@ contains the answer.
 Every answer the system produces names at least one source document.
 
 **Why this target:**
-<!-- Why all five and not four? What about your setup makes that achievable —
-     or what would have to go wrong for it not to be? -->
+All five, not four, because every chunk carries its filename as metadata and the grounding instruction tells the model to cite it, so a missing source means the prompt is being ignored, not that the question was hard. Missing one would be a real failure, so I'm not leaving room for it.
 
 ---
 
@@ -50,47 +48,26 @@ in at least 4 of 5 tries.
      just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
 
 **Why this target:**
-<!-- What did your distances look like when you set the cutoff in Milestone 4?
-     Was there a clean gap, or did the two groups overlap? -->
+The OUT_OF_SCOPE questions (Mongolia, diesel engines, Rust) share almost no vocabulary with campus posts, so I expect a clear gap between the two groups of distances. I allow one miss because the ibuprofen question could land near the single health post in the corpus.
 
 ---
 
-## 4. Something about your chunks
+## 4. Chunks are complete, labelled thoughts
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know if your chunks were the right size? Name something
-     countable or observable.
-
-     Examples of the right shape — don't copy these, they should come from
-     what you actually saw in Milestone 3:
-       - "At least 4 of 5 sampled chunks read as a complete thought, with no
-          sentence cut in half at either end."
-       - "No chunk is shorter than 200 characters, since anything below that
-          in my corpus turned out to be a heading with no content under it." -->
-
-
+At least 4 of the 5 chunks printed by `python app.py chunks -n 5` start with the post's title line and end on a full sentence, and no chunk in the whole index is shorter than 80 characters.
 
 **Why this target:**
-
+The starter's fallback chunker produced a 2-character chunk on advice_threads, and a chunk like "Hours are 7am to 9pm" is useless if it doesn't say which dining hall it's about. Paragraph splitting plus the repeated title should fix both. 80 characters is the smallest size I saw that still held one complete fact. I allow 1 of 5 to miss because a few posts have no separate title line.
 
 
 ---
 
-## 5. Your choice
+## 5. Answers contain the right specific fact
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. It could be about
-     speed, about refusals, about a particular kind of question your corpus
-     handles badly, about source attribution being correct rather than merely
-     present — anything, as long as it names a number or an observable
-     outcome. -->
-
-
+For at least 4 of my 5 test questions, the generated answer contains the `expects` phrase written in `questions.py` (for example "20 to 25 minutes" or "Fenwick Court").
 
 **Why this target:**
-
+The point of this corpus is specific student knowledge like numbers, deadlines and names, so a vague answer that cites the right file but drops the number would still be useless. I picked 4 of 5, not 5 of 5, because the model may paraphrase ("fifteen days" as "15 days"), which a plain string match would count as a miss even when the answer is right.
 
 
 ---
