@@ -97,7 +97,54 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
       - Would splitting on paragraph breaks keep more thoughts intact than
         splitting on a character count?
     """
-    return fallback_split(documents)
+    # campus_life posts are short (183-554 chars) and written as 1-4 short
+    # paragraphs, each usually one idea (wait times / hours / cost). So:
+    #   - split on blank lines (paragraph boundaries), never mid-sentence
+    #   - merge neighbouring paragraphs until ~MAX_CHARS, so tiny paragraphs
+    #     don't become fragments
+    #   - "overlap" = the post's title line, repeated at the top of every chunk
+    #     after the first, so a chunk like "Hours are 7am-9pm" still says
+    #     WHICH dining hall it is about.
+    MAX_CHARS = 350
+    MIN_CHARS = 80
+
+    chunks: list[Chunk] = []
+    for doc in documents:
+        paras = [p.strip() for p in doc.text.split("\n\n") if p.strip()]
+        if not paras:
+            continue
+        title = paras[0] if len(paras[0]) < 100 else ""
+        body = paras[1:] if title else paras
+
+        groups: list[str] = []
+        current = ""
+        for para in body:
+            if current and len(current) + len(para) + 2 > MAX_CHARS:
+                groups.append(current)
+                current = para
+            else:
+                current = f"{current}\n\n{para}" if current else para
+        if current:
+            # fold a too-short tail into the previous group instead of
+            # leaving a fragment
+            if groups and len(current) < MIN_CHARS:
+                groups[-1] = f"{groups[-1]}\n\n{current}"
+            else:
+                groups.append(current)
+        if not groups:
+            groups = [""]
+
+        for i, g in enumerate(groups):
+            text = f"{title}\n\n{g}".strip() if title else g
+            chunks.append(
+                Chunk(
+                    text=text,
+                    source=doc.source,
+                    index=i,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
