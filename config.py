@@ -35,6 +35,10 @@ CHUNK_OVERLAP = 120     # characters shared between neighbouring chunks
 
 TOP_K = 5               # how many chunks to pull back per question
 
+# Unit 2 improvement: combine semantic search with BM25 keyword search.
+# False = the unit 1 system (semantic only), True = hybrid. Env var wins.
+HYBRID = os.getenv("AI201_HYBRID", "1") == "1"
+
 # The relevance gate. If the best chunk is further away than this, the system
 # refuses to answer instead of handing the model thin material.
 #

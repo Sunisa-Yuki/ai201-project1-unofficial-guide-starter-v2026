@@ -199,6 +199,9 @@ def search(
             f"No index called '{name}'. Run `python app.py index` first."
         ) from exc
 
+    if config.HYBRID:
+        return hybrid_search(question, top_k, collection)
+
     raw = collection.query(
         query_embeddings=embed([question]),
         n_results=min(top_k, collection.count()),
@@ -214,6 +217,63 @@ def search(
                 source=str(meta.get("source", "unknown")),
                 label=f"{meta.get('source', 'unknown')}#{meta.get('index', 0)}",
                 distance=float(distance),
+                produced_by=str(meta.get("produced_by", "unknown")),
+            )
+        )
+    return results
+
+
+_STOPWORDS = set("""a an and are as at be by do does for from how i in is it
+of on or the to what when where which who why with my me you your there this
+that do does did can get gets""".split())
+
+
+def _tokens(text: str) -> list[str]:
+    import re
+    return [w for w in re.findall(r"[a-z0-9$.]+", text.lower()) if w not in _STOPWORDS]
+
+
+def hybrid_search(question: str, top_k: int, collection) -> list[Result]:
+    """
+    Unit 2 improvement: semantic search + BM25 keyword search, merged with
+    reciprocal rank fusion (RRF, k=60).
+
+    Every chunk keeps its REAL cosine distance, so the relevance gate
+    (gate.py::check, which takes the minimum distance) behaves exactly as
+    before — hybrid only changes WHICH chunks come back and in what order.
+    """
+    from rank_bm25 import BM25Okapi
+
+    everything = collection.get(include=["documents", "metadatas"])
+    ids, docs, metas = everything["ids"], everything["documents"], everything["metadatas"]
+    n = len(ids)
+
+    # semantic ranking over every chunk (the corpus is ~100 chunks, so this is cheap)
+    raw = collection.query(query_embeddings=embed([question]), n_results=n)
+    sem_ids = raw["ids"][0]
+    distance = dict(zip(sem_ids, raw["distances"][0]))
+
+    # keyword ranking
+    bm25 = BM25Okapi([_tokens(d) for d in docs])
+    scores = bm25.get_scores(_tokens(question))
+    kw_ids = [ids[i] for i in sorted(range(n), key=lambda i: -scores[i]) if scores[i] > 0]
+
+    fused: dict[str, float] = {}
+    for rank, cid in enumerate(sem_ids):
+        fused[cid] = fused.get(cid, 0.0) + 1.0 / (60 + rank + 1)
+    for rank, cid in enumerate(kw_ids):
+        fused[cid] = fused.get(cid, 0.0) + 1.0 / (60 + rank + 1)
+
+    by_id = {cid: (doc, meta) for cid, doc, meta in zip(ids, docs, metas)}
+    results: list[Result] = []
+    for cid in sorted(fused, key=lambda c: -fused[c])[:top_k]:
+        doc, meta = by_id[cid]
+        results.append(
+            Result(
+                text=doc,
+                source=str(meta.get("source", "unknown")),
+                label=f"{meta.get('source', 'unknown')}#{meta.get('index', 0)}",
+                distance=float(distance[cid]),
                 produced_by=str(meta.get("produced_by", "unknown")),
             )
         )
