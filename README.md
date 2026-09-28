@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+Yuki — corpus: `campus_life`
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,104 +21,95 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+The Unofficial Guide answers plain-English questions about campus life using the `campus_life` corpus: 88 short student-written posts about dining halls, dorms, laundry, noise, courses, deadlines and the campus shuttle. You ask something like "How long is the wait at Kestrel Commons at lunch?" and it retrieves the closest posts from a local Chroma vector store, checks they're actually close enough (the relevance gate), and has the model answer from those posts only, naming the file each fact came from. Questions the posts don't cover get "I don't have enough information about that" instead of a guess.
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** up to 350 characters per chunk, split on paragraph boundaries (blank lines), never mid-sentence. A leftover piece under 80 characters is merged into the previous chunk.
+**Overlap:** no character overlap. Instead, the post's title line (e.g. "Kestrel Commons", "Laundry in Innisfree Hall") is repeated at the top of every chunk from that post.
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
-
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
-
-     Milestone 3. -->
+When I read the documents I saw that every post is short (183–554 characters) and made of 1–4 short paragraphs, and each paragraph is usually one idea: wait times, then hours and cost; or "the good", then "the bad". The starter's 800-character window never split anything (88 docs became 88 chunks), so a housing post that covers rooms, air conditioning, laundry *and* noise was one chunk that matched every housing question a little. Splitting on paragraphs separates those ideas. The risk is a paragraph like "Hours are 7:00am to 9:00pm weekdays" losing *which* building it's about, which is why I repeat the title instead of using a character overlap: a 120-character overlap would copy half a paragraph from the neighbour, while the title carries the one piece of context that matters. My chunker produces 107 chunks, 265 characters on average (shortest 116, longest 397).
 
 ## Sample Chunks
 
-<!-- Five chunks, pasted as text. Label each one and name the file it came from
-     AND the function that produced it — the grader checks your code against
-     what you claim here.
-
-     `python app.py chunks -n 5` prints all three for you. Copy them straight
-     across.
-
-     Milestone 3. -->
-
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `admin_add_drop_deadline.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+On the add/drop deadline
+
+You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
 ```
 
-**Chunk 2** — source: `` — produced by: ``
+**Chunk 2** — source: `course_cs_210.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+CS 210 Data Structures
+
+I'm a junior and I've done this twice now. Format is lecture with weekly labs; slides go up after class, not before. Assessment: two midterms and a final, all drawn from lecture material rather than the textbook. Midterms are curved, the final is not.
+
+Expect 8 to 10 hours a week outside class.
 ```
 
-**Chunk 3** — source: `` — produced by: ``
+**Chunk 3** — source: `course_math_220_exams.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+MATH 220 Linear Algebra — assessment
+
+Two midterms and a cumulative final. Curved to a b- median.
+
+The problem sets are the course; the lectures make sense afterwards rather than during.
 ```
 
-**Chunk 4** — source: `` — produced by: ``
+**Chunk 4** — source: `dining_the_ridgeway_cafe.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+The Ridgeway Café
+
+Second-year here. Wait times: 10 to 15 minutes at 12:30, none after 2:00. The thing worth going for is the only place on campus with real espresso. The thing to know is that seating is tight; about 40 seats for a building of 900.
+
+Hours are 7:00am to 4:00pm weekdays only. Costs declining balance only, no meal swipes.
 ```
 
-**Chunk 5** — source: `` — produced by: ``
+**Chunk 5** — source: `housing_innisfree_hall_laundry.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+Laundry in Innisfree Hall
+
+Machines take $1.75 wash, $1.75 dry, app-based. There are eight washers and six dryers for the building, which is the wrong ratio and means the dryers back up on Sunday evenings.
+
+Best time to do laundry here is Tuesday or Wednesday morning. Sunday after 6pm you will wait.
 ```
 
 ## Sample Answer
 
-<!-- One complete question and answer, pasted as text, with the source line
-     visible. Milestone 4. -->
-
-**Question:**
+**Question:** How long is the wait at Kestrel Commons during the lunch rush?
 
 **Answer:**
 
 ```
+PASTE OUTPUT OF: python app.py ask "How long is the wait at Kestrel Commons during the lunch rush?"
 ```
 
-**My relevance cutoff:**
-
-<!-- The number you set in config.py, and how you got there.
-
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
-
-     Milestone 4. -->
+**My relevance cutoff:** 0.6 <!-- UPDATE after running retrieve -->
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| How long is the wait at Kestrel Commons during the lunch rush? | Yes |  |
+| Do leftover dining dollars roll over from spring to the next autumn? | Yes |  |
+| How many days do I have to start a grade appeal, and who do I go to first? | Yes |  |
+| What does laundry cost in Innisfree Hall and when is the best time to do it? | Yes |  |
+| Which shuttle stop gets skipped when the driver is running behind? | Yes |  |
+| What is the capital of Mongolia? | No |  |
+| How do I change the oil in a diesel engine? | No |  |
+| Who won the 1994 World Cup? | No |  |
+| What is the recommended dosage of ibuprofen for a headache? | No |  |
+| How do I write a for loop in Rust? | No |  |
 
 ## How I Used AI
 
-<!-- Two specific moments. For each: what you asked for, what came back, and
-     what you changed about it.
+**1.** I gave Claude the Milestone 3 brief and a few `campus_life` posts and asked for a chunker. It proposed splitting on paragraphs and carrying the post's title into each chunk instead of a character overlap. I checked the output against criterion 4 by reading `python app.py chunks -n 5`, and kept an 80-character minimum so a one-line trailing paragraph gets folded into the previous chunk instead of becoming a fragment like the 2-character chunk the starter made on advice_threads.
 
-     "I asked Claude to write the chunking function from my notes. It ignored
-     the overlap, so I added that myself" is the level of detail we're after.
-     "I used AI to help me code" is not.
-
-     Milestone 5. -->
-
-**1.**
-
-**2.**
+**2.** During setup my `pip install -r requirements.txt` failed with "No such file or directory". I pasted the terminal output to Claude, and it pointed out that I had skipped the `git clone` / `cd` step and was running from my Desktop instead of the repo. I re-ran the clone, moved into the repo folder, and made a fresh `.venv` there. I also checked every `expects` phrase Claude suggested for `questions.py` against the actual source file (e.g. "20 to 25 minutes" in `dining_kestrel_commons.txt`) before committing them.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
